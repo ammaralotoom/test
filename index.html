@@ -150,8 +150,6 @@
     }
 
 
-    /* Basemap Gallery width */
-
     .esri-basemap-gallery {
       width: 300px;
       max-height: 450px;
@@ -224,17 +222,15 @@
 
 
   // ============================================================
-  // REQUEST TYPE FILTER
+  // REQUEST TYPE
   //
-  // Examples:
+  // IMPORTANT:
   //
   // ?requestType=all
   //
-  // ?requestType=Renewal%20Request
+  // means:
   //
-  // ?requestType=Cancellation%20Request
-  //
-  // ?requestType=New%20License%20Request
+  // DO NOT FILTER Request_Type AT ALL
   //
   // ============================================================
 
@@ -244,26 +240,44 @@
     );
 
 
-  const requestTypeFilter =
+  const rawRequestType =
     urlParams.get(
       "requestType"
     ) || "";
 
 
-  // Normalize once.
-  // Empty value or "all" means display everything.
+  // ------------------------------------------------------------
+  // IMPORTANT FIX
+  //
+  // Convert "all" into an empty filter.
+  //
+  // Therefore:
+  //
+  // requestType=all
+  //
+  // behaves EXACTLY like:
+  //
+  // no requestType parameter
+  // ------------------------------------------------------------
 
-  const normalizedRequestTypeFilter =
+  let requestTypeFilter =
     String(
-      requestTypeFilter
-    )
-      .trim()
+      rawRequestType
+    ).trim();
+
+
+  if (
+    requestTypeFilter.toLowerCase() === "all"
+  ) {
+
+    requestTypeFilter = "";
+
+  }
+
+
+  const normalizedFilter =
+    requestTypeFilter
       .toLowerCase();
-
-
-  const showAllRequestTypes =
-    !normalizedRequestTypeFilter ||
-    normalizedRequestTypeFilter === "all";
 
 
   // ============================================================
@@ -369,10 +383,6 @@
     });
 
 
-  // ============================================================
-  // BASEMAP GALLERY EXPAND BUTTON
-  // ============================================================
-
   const basemapExpand =
     new Expand({
 
@@ -390,8 +400,6 @@
 
     });
 
-
-  // Add gallery to top-right
 
   view.ui.add(
     basemapExpand,
@@ -426,19 +434,19 @@
   // ============================================================
 
   if (
-    showAllRequestTypes
+    requestTypeFilter
   ) {
 
     filterInfo.textContent =
-      "Request Type: All";
+      "Request Type: " +
+      requestTypeFilter;
 
   }
 
   else {
 
     filterInfo.textContent =
-      "Request Type: " +
-      requestTypeFilter;
+      "Request Type: All";
 
   }
 
@@ -800,10 +808,6 @@
     try {
 
 
-      // --------------------------------------------------------
-      // CLOSE PREVIOUS POPUP
-      // --------------------------------------------------------
-
       try {
 
         view.closePopup();
@@ -818,10 +822,6 @@
 
       }
 
-
-      // --------------------------------------------------------
-      // PAN + ZOOM
-      // --------------------------------------------------------
 
       await view.goTo(
         {
@@ -841,10 +841,6 @@
         }
       );
 
-
-      // --------------------------------------------------------
-      // OPEN POPUP AFTER PAN / ZOOM
-      // --------------------------------------------------------
 
       await view.openPopup({
 
@@ -945,12 +941,30 @@
       );
 
 
+      console.log(
+        "Raw requestType:",
+        rawRequestType
+      );
+
+
+      console.log(
+        "Effective requestType filter:",
+        requestTypeFilter || "ALL"
+      );
+
+
       // ========================================================
-      // REQUEST TYPE FILTER
+      // FILTER
+      // ========================================================
       //
-      // requestType=all -> all records
-      // no requestType  -> all records
-      // specific value  -> matching Request_Type only
+      // IMPORTANT:
+      //
+      // If requestTypeFilter === ""
+      //
+      // then NO Request_Type filtering occurs.
+      //
+      // requestType=all was converted to "" above.
+      //
       // ========================================================
 
       const validRows =
@@ -996,25 +1010,45 @@
               !== "";
 
 
-            const rowRequestType =
+            // -----------------------------------------------
+            // REQUEST TYPE
+            // -----------------------------------------------
 
-              String(
-                row.Request_Type || ""
-              )
-
-                .trim()
-
-                .toLowerCase();
+            let matchesRequestType =
+              true;
 
 
-            const matchesFilter =
+            // ONLY filter when an actual request type
+            // was supplied.
+            //
+            // If requestType=all:
+            //
+            // requestTypeFilter = ""
+            //
+            // therefore this block NEVER runs.
 
-              showAllRequestTypes
+            if (
+              normalizedFilter !== ""
+            ) {
 
-              ||
 
-              rowRequestType ===
-                normalizedRequestTypeFilter;
+              const rowRequestType =
+
+                String(
+                  row.Request_Type || ""
+                )
+
+                  .trim()
+
+                  .toLowerCase();
+
+
+              matchesRequestType =
+
+                rowRequestType ===
+                normalizedFilter;
+
+            }
 
 
             return (
@@ -1027,13 +1061,19 @@
 
               &&
 
-              matchesFilter
+              matchesRequestType
 
             );
 
           }
 
         );
+
+
+      console.log(
+        "Displayed records:",
+        validRows.length
+      );
 
 
       // ========================================================
@@ -1195,10 +1235,6 @@
               },
 
 
-              // =================================================
-              // MARKER CLICK POPUP
-              // =================================================
-
               popupTemplate: {
 
 
@@ -1304,10 +1340,6 @@
             async function() {
 
 
-              // -----------------------------------------------
-              // REMOVE OLD SELECTION
-              // -----------------------------------------------
-
               document
                 .querySelectorAll(
                   ".license-item.selected"
@@ -1325,18 +1357,10 @@
                 );
 
 
-              // -----------------------------------------------
-              // SELECT CURRENT ITEM
-              // -----------------------------------------------
-
               li.classList.add(
                 "selected"
               );
 
-
-              // -----------------------------------------------
-              // PAN + ZOOM + POPUP
-              // -----------------------------------------------
 
               await openRecordPopup(
                 graphic,
@@ -1400,15 +1424,23 @@
       else {
 
 
+        // IMPORTANT:
+        //
+        // requestType=all becomes requestTypeFilter=""
+        //
+        // so you will NEVER get:
+        //
+        // No licenses found for "all"
+
         if (
-          !showAllRequestTypes
+          requestTypeFilter
         ) {
 
           countDiv.textContent =
+
             `No licenses found for "${requestTypeFilter}"`;
 
         }
-
 
         else {
 
