@@ -99,6 +99,34 @@
       flex: 1;
       height: 100%;
     }
+
+    /* Popup content styling */
+    .popup-content {
+      min-width: 300px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .popup-section {
+      margin-bottom: 12px;
+    }
+
+    .popup-section-title {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .popup-row {
+      margin-bottom: 3px;
+    }
+
+    .popup-label {
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -132,11 +160,8 @@
 <script type="module">
 
   // ============================================================
-  // JSON DATA URL
+  // JSON DATA
   // ============================================================
-
-  // Because data.json is in the same GitHub Pages folder
-  // as index.html, use a relative path.
 
   const DATA_URL = "./data.json";
 
@@ -150,7 +175,6 @@
   // ?requestType=Renewal%20Request
   // ?requestType=New%20License%20Request
   //
-  // If requestType is not provided, all request types are shown.
   // ============================================================
 
   const urlParams =
@@ -158,11 +182,6 @@
 
   const requestTypeFilter =
     urlParams.get("requestType") || "";
-
-  console.log(
-    "Request Type from URL:",
-    requestTypeFilter
-  );
 
 
   // ============================================================
@@ -196,13 +215,8 @@
 
   const map =
     new Map({
-
-      basemap:
-        "streets-vector",
-
-      layers:
-        [graphicsLayer]
-
+      basemap: "streets-vector",
+      layers: [graphicsLayer]
     });
 
 
@@ -213,19 +227,20 @@
   const view =
     new MapView({
 
-      container:
-        "viewDiv",
+      container: "viewDiv",
 
-      map:
-        map,
+      map: map,
 
       center: [
         46.6753,
         24.7136
       ],
 
-      zoom:
-        10
+      zoom: 10,
+
+      popup: {
+        dockEnabled: false
+      }
 
     });
 
@@ -235,23 +250,17 @@
   // ============================================================
 
   const licenseList =
-    document.getElementById(
-      "licenseList"
-    );
+    document.getElementById("licenseList");
 
   const countDiv =
-    document.getElementById(
-      "count"
-    );
+    document.getElementById("count");
 
   const filterInfo =
-    document.getElementById(
-      "filterInfo"
-    );
+    document.getElementById("filterInfo");
 
 
   // ============================================================
-  // SHOW CURRENT FILTER
+  // DISPLAY FILTER
   // ============================================================
 
   if (requestTypeFilter) {
@@ -277,10 +286,6 @@
 
     try {
 
-      // --------------------------------------------------------
-      // Clear old results
-      // --------------------------------------------------------
-
       countDiv.textContent =
         "Loading data...";
 
@@ -291,7 +296,7 @@
 
 
       // --------------------------------------------------------
-      // Fetch JSON
+      // Fetch data.json
       // --------------------------------------------------------
 
       const response =
@@ -307,129 +312,70 @@
       }
 
 
-      // --------------------------------------------------------
-      // Convert response to JSON
-      // --------------------------------------------------------
-
       const data =
         await response.json();
 
 
-      console.log(
-        "Full JSON:",
-        data
-      );
-
-
       // --------------------------------------------------------
-      // Get TransactionsTable
+      // Read TransactionsTable
       // --------------------------------------------------------
 
       const rows =
-        Array.isArray(
-          data.TransactionsTable
-        )
+        Array.isArray(data.TransactionsTable)
           ? data.TransactionsTable
           : [];
 
 
       console.log(
-        "All JSON rows:",
+        "All rows:",
         rows
       );
 
 
       // ========================================================
-      // FILTER ROWS
+      // FILTER
       // ========================================================
 
       const normalizedFilter =
-        String(
-          requestTypeFilter || ""
-        )
+        String(requestTypeFilter || "")
           .trim()
           .toLowerCase();
 
 
       const validRows =
-        rows.filter(
-          row => {
+        rows.filter(row => {
 
-            // -----------------------------------------------
-            // Latitude / Longitude
-            // -----------------------------------------------
+          const latitude =
+            Number(row.Latitude);
 
-            const latitude =
-              Number(
-                row.Latitude
-              );
+          const longitude =
+            Number(row.Longitude);
 
-            const longitude =
-              Number(
-                row.Longitude
-              );
+          const rowRequestType =
+            String(row.Request_Type || "")
+              .trim()
+              .toLowerCase();
 
+          const hasValidCoordinates =
+            Number.isFinite(latitude) &&
+            Number.isFinite(longitude);
 
-            // -----------------------------------------------
-            // Request Type
-            // -----------------------------------------------
+          const hasLicense =
+            String(row.License_ID || "")
+              .trim() !== "";
 
-            const rowRequestType =
-              String(
-                row.Request_Type || ""
-              )
-                .trim()
-                .toLowerCase();
+          const matchesRequestType =
+            !normalizedFilter ||
+            rowRequestType === normalizedFilter;
 
 
-            // -----------------------------------------------
-            // Validate coordinates
-            // -----------------------------------------------
+          return (
+            hasLicense &&
+            hasValidCoordinates &&
+            matchesRequestType
+          );
 
-            const hasValidCoordinates =
-              Number.isFinite(
-                latitude
-              ) &&
-              Number.isFinite(
-                longitude
-              );
-
-
-            // -----------------------------------------------
-            // Validate License ID
-            // -----------------------------------------------
-
-            const hasLicense =
-              String(
-                row.License_ID || ""
-              )
-                .trim() !== "";
-
-
-            // -----------------------------------------------
-            // Request Type Filter
-            // -----------------------------------------------
-
-            const matchesRequestType =
-              !normalizedFilter ||
-              rowRequestType ===
-                normalizedFilter;
-
-
-            return (
-              hasLicense &&
-              hasValidCoordinates &&
-              matchesRequestType
-            );
-
-          }
-        );
-
-
-      console.log(
-        "Filtered rows:",
-        validRows
-      );
+        });
 
 
       // ========================================================
@@ -441,31 +387,26 @@
 
 
       // ========================================================
-      // CREATE GRAPHICS AND LIST
+      // CREATE MAP POINTS
       // ========================================================
 
       validRows.forEach(
         (row, index) => {
 
           const latitude =
-            Number(
-              row.Latitude
-            );
+            Number(row.Latitude);
 
           const longitude =
-            Number(
-              row.Longitude
-            );
+            Number(row.Longitude);
 
 
           // ----------------------------------------------------
-          // ArcGIS Point Geometry
+          // Geometry
           // ----------------------------------------------------
 
           const point = {
 
-            type:
-              "point",
+            type: "point",
 
             longitude:
               longitude,
@@ -477,7 +418,7 @@
 
 
           // ----------------------------------------------------
-          // Point Symbol
+          // Marker symbol
           // ----------------------------------------------------
 
           const symbol = {
@@ -520,6 +461,11 @@
               symbol:
                 symbol,
 
+
+              // =================================================
+              // ALL JSON FIELDS
+              // =================================================
+
               attributes: {
 
                 ObjectID:
@@ -559,7 +505,7 @@
                   row.Card_ID || "",
 
                 Value_SAR:
-                  row.Value_SAR || "",
+                  row.Value_SAR ?? "",
 
                 Latitude:
                   latitude,
@@ -570,71 +516,171 @@
               },
 
 
-              // ------------------------------------------------
-              // Popup
-              // ------------------------------------------------
+              // =================================================
+              // POPUP WITH ALL INFORMATION
+              // =================================================
 
               popupTemplate: {
 
                 title:
-                  "{License_ID}",
+                  "License: {License_ID}",
 
                 content: `
 
-                  <b>Contractor:</b>
-                  {Contractor_Name}
-                  <br>
+                  <div class="popup-content">
 
-                  <b>Contractor ID:</b>
-                  {Contractor_ID}
-                  <br>
+                    <div class="popup-section">
 
-                  <b>Transaction ID:</b>
-                  {Transaction_ID}
-                  <br>
+                      <div class="popup-section-title">
+                        Transaction
+                      </div>
 
-                  <b>Transaction Date:</b>
-                  {Transaction_Date}
-                  <br><br>
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Transaction ID:
+                        </span>
+                        {Transaction_ID}
+                      </div>
 
-                  <b>License:</b>
-                  {License_ID}
-                  <br>
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Transaction Date:
+                        </span>
+                        {Transaction_Date}
+                      </div>
 
-                  <b>Status:</b>
-                  {License_Status}
-                  <br>
+                    </div>
 
-                  <b>License Type:</b>
-                  {License_Type}
-                  <br>
 
-                  <b>Category:</b>
-                  {Category}
-                  <br>
+                    <div class="popup-section">
 
-                  <b>Request Type:</b>
-                  {Request_Type}
-                  <br><br>
+                      <div class="popup-section-title">
+                        Contractor
+                      </div>
 
-                  <b>Card Type:</b>
-                  {Card_Type}
-                  <br>
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Contractor ID:
+                        </span>
+                        {Contractor_ID}
+                      </div>
 
-                  <b>Card ID:</b>
-                  {Card_ID}
-                  <br>
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Contractor Name:
+                        </span>
+                        {Contractor_Name}
+                      </div>
 
-                  <b>Value SAR:</b>
-                  {Value_SAR}
-                  <br><br>
+                    </div>
 
-                  <b>Latitude:</b>
-                  {Latitude}
-                  <br>
 
-                  <b>Longitude:</b>
-                  {Longitude}
+                    <div class="popup-section">
+
+                      <div class="popup-section-title">
+                        License
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          License ID:
+                        </span>
+                        {License_ID}
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Category:
+                        </span>
+                        {Category}
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          License Type:
+                        </span>
+                        {License_Type}
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          License Status:
+                        </span>
+                        {License_Status}
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Request Type:
+                        </span>
+                        {Request_Type}
+                      </div>
+
+                    </div>
+
+
+                    <div class="popup-section">
+
+                      <div class="popup-section-title">
+                        Card
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Card Type:
+                        </span>
+                        {Card_Type}
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Card ID:
+                        </span>
+                        {Card_ID}
+                      </div>
+
+                    </div>
+
+
+                    <div class="popup-section">
+
+                      <div class="popup-section-title">
+                        Financial
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Value:
+                        </span>
+                        {Value_SAR} SAR
+                      </div>
+
+                    </div>
+
+
+                    <div class="popup-section">
+
+                      <div class="popup-section-title">
+                        Location
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Latitude:
+                        </span>
+                        {Latitude}
+                      </div>
+
+                      <div class="popup-row">
+                        <span class="popup-label">
+                          Longitude:
+                        </span>
+                        {Longitude}
+                      </div>
+
+                    </div>
+
+                  </div>
 
                 `
 
@@ -644,7 +690,7 @@
 
 
           // ----------------------------------------------------
-          // Add Point to Map
+          // Add graphic to map
           // ----------------------------------------------------
 
           graphicsLayer.add(
@@ -653,7 +699,7 @@
 
 
           // ====================================================
-          // CREATE LIST ITEM
+          // CREATE SIDEBAR ITEM
           // ====================================================
 
           const li =
@@ -719,7 +765,7 @@
 
 
           // ====================================================
-          // CLICK LIST ITEM
+          // CLICK SIDEBAR ITEM
           // ====================================================
 
           li.addEventListener(
@@ -760,7 +806,7 @@
 
 
       // ========================================================
-      // ZOOM TO FILTERED POINTS
+      // ZOOM TO RESULTS
       // ========================================================
 
       if (
@@ -770,8 +816,7 @@
         await view.goTo(
           graphicsLayer.graphics.toArray(),
           {
-            padding:
-              60
+            padding: 60
           }
         );
 
@@ -794,12 +839,6 @@
       }
 
     }
-
-
-    // ==========================================================
-    // ERROR HANDLING
-    // ==========================================================
-
     catch(error) {
 
       console.error(
@@ -827,9 +866,7 @@
 
   function escapeHtml(value) {
 
-    return String(
-      value
-    )
+    return String(value)
 
       .replaceAll(
         "&",
