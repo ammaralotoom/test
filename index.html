@@ -1,15 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
   <title>License Map</title>
 
-  <!-- ArcGIS Maps SDK for JavaScript -->
-  <script type="module" src="https://js.arcgis.com/5.1/"></script>
+  <!-- ArcGIS Maps SDK -->
+  <script
+    type="module"
+    src="https://js.arcgis.com/5.1/"
+  ></script>
 
   <style>
+
     html,
     body {
       padding: 0;
@@ -23,16 +32,25 @@
       height: 100vh;
     }
 
+    /* =========================================================
+       SIDEBAR
+    ========================================================= */
+
     #sidebar {
       width: 340px;
       background: white;
       border-right: 1px solid #ccc;
       overflow-y: auto;
+      z-index: 10;
     }
 
     #sidebarHeader {
       padding: 15px;
       border-bottom: 1px solid #ddd;
+      position: sticky;
+      top: 0;
+      background: white;
+      z-index: 20;
     }
 
     #sidebarHeader h2 {
@@ -40,7 +58,7 @@
     }
 
     #filterInfo {
-      margin-top: 12px;
+      margin-top: 8px;
       font-size: 14px;
       color: #333;
     }
@@ -61,15 +79,23 @@
       padding: 12px 15px;
       border-bottom: 1px solid #eee;
       cursor: pointer;
+      transition: background 0.15s;
     }
 
     .license-item:hover {
       background: #f3f3f3;
     }
 
+    .license-item.selected {
+      background: #e6f3ff;
+      border-left: 4px solid #007ac2;
+      padding-left: 11px;
+    }
+
     .license-id {
       font-weight: bold;
       font-size: 15px;
+      color: #222;
     }
 
     .contractor {
@@ -92,47 +118,31 @@
     .coordinates {
       margin-top: 4px;
       color: #777;
-      font-size: 12px;
+      font-size: 11px;
     }
+
+
+    /* =========================================================
+       MAP
+    ========================================================= */
 
     #viewDiv {
       flex: 1;
       height: 100%;
     }
 
-    /* Popup content styling */
-    .popup-content {
-      min-width: 300px;
-      font-family: Arial, sans-serif;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .popup-section {
-      margin-bottom: 12px;
-    }
-
-    .popup-section-title {
-      font-size: 14px;
-      font-weight: bold;
-      margin-bottom: 5px;
-      padding-bottom: 3px;
-      border-bottom: 1px solid #ddd;
-    }
-
-    .popup-row {
-      margin-bottom: 3px;
-    }
-
-    .popup-label {
-      font-weight: bold;
-    }
   </style>
+
 </head>
+
 
 <body>
 
 <div id="container">
+
+  <!-- =======================================================
+       SIDEBAR
+  ======================================================== -->
 
   <div id="sidebar">
 
@@ -152,6 +162,11 @@
 
   </div>
 
+
+  <!-- =======================================================
+       MAP
+  ======================================================== -->
+
   <div id="viewDiv"></div>
 
 </div>
@@ -159,33 +174,39 @@
 
 <script type="module">
 
+
   // ============================================================
-  // JSON DATA
+  // DATA URL
   // ============================================================
 
   const DATA_URL = "./data.json";
 
 
   // ============================================================
-  // REQUEST TYPE FILTER FROM URL
+  // REQUEST TYPE FILTER
   //
   // Examples:
   //
-  // ?requestType=Cancellation%20Request
   // ?requestType=Renewal%20Request
+  //
+  // ?requestType=Cancellation%20Request
+  //
   // ?requestType=New%20License%20Request
   //
   // ============================================================
 
   const urlParams =
-    new URLSearchParams(window.location.search);
+    new URLSearchParams(
+      window.location.search
+    );
+
 
   const requestTypeFilter =
     urlParams.get("requestType") || "";
 
 
   // ============================================================
-  // IMPORT ARCGIS CLASSES
+  // ARCGIS IMPORTS
   // ============================================================
 
   const [
@@ -193,12 +214,18 @@
     MapView,
     Graphic,
     GraphicsLayer
-  ] = await $arcgis.import([
-    "@arcgis/core/Map.js",
-    "@arcgis/core/views/MapView.js",
-    "@arcgis/core/Graphic.js",
-    "@arcgis/core/layers/GraphicsLayer.js"
-  ]);
+  ] =
+    await $arcgis.import([
+
+      "@arcgis/core/Map.js",
+
+      "@arcgis/core/views/MapView.js",
+
+      "@arcgis/core/Graphic.js",
+
+      "@arcgis/core/layers/GraphicsLayer.js"
+
+    ]);
 
 
   // ============================================================
@@ -215,31 +242,45 @@
 
   const map =
     new Map({
-      basemap: "streets-vector",
-      layers: [graphicsLayer]
+
+      basemap:
+        "streets-vector",
+
+      layers:
+        [graphicsLayer]
+
     });
 
 
   // ============================================================
-  // MAP VIEW
+  // VIEW
   // ============================================================
 
   const view =
     new MapView({
 
-      container: "viewDiv",
+      container:
+        "viewDiv",
 
-      map: map,
+      map:
+        map,
 
       center: [
         46.6753,
         24.7136
       ],
 
-      zoom: 10,
+      zoom:
+        10,
+
+      popupEnabled:
+        true,
 
       popup: {
-        dockEnabled: false
+
+        dockEnabled:
+          false
+
       }
 
     });
@@ -250,63 +291,480 @@
   // ============================================================
 
   const licenseList =
-    document.getElementById("licenseList");
+    document.getElementById(
+      "licenseList"
+    );
+
 
   const countDiv =
-    document.getElementById("count");
+    document.getElementById(
+      "count"
+    );
+
 
   const filterInfo =
-    document.getElementById("filterInfo");
+    document.getElementById(
+      "filterInfo"
+    );
 
 
   // ============================================================
-  // DISPLAY FILTER
+  // DISPLAY CURRENT FILTER
   // ============================================================
 
   if (requestTypeFilter) {
 
     filterInfo.textContent =
-      "Request Type Filter: " +
+      "Request Type: " +
       requestTypeFilter;
 
   }
+
   else {
 
     filterInfo.textContent =
-      "Request Type Filter: All";
+      "Request Type: All";
 
   }
 
 
   // ============================================================
-  // LOAD JSON DATA
+  // FORMAT DATE
+  // ============================================================
+
+  function formatDate(value) {
+
+    if (!value) {
+      return "";
+    }
+
+
+    const date =
+      new Date(value);
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return value;
+
+    }
+
+
+    return date.toLocaleDateString(
+      "en-GB"
+    );
+
+  }
+
+
+  // ============================================================
+  // FORMAT MONEY
+  // ============================================================
+
+  function formatMoney(value) {
+
+    const number =
+      Number(value);
+
+
+    if (
+      !Number.isFinite(number)
+    ) {
+
+      return escapeHtml(value);
+
+    }
+
+
+    return number.toLocaleString(
+      "en-US"
+    ) + " SAR";
+
+  }
+
+
+  // ============================================================
+  // CREATE POPUP HTML
+  //
+  // This contains ALL information for the selected record.
+  // ============================================================
+
+  function createPopupContent(row) {
+
+    return `
+
+      <div style="
+        width: 320px;
+        max-width: 100%;
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+      ">
+
+
+        <!-- ===============================
+             TRANSACTION
+        ================================ -->
+
+        <div style="
+          font-weight: bold;
+          font-size: 15px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #ddd;
+        ">
+          Transaction
+        </div>
+
+
+        ${popupRow(
+          "Transaction ID",
+          row.Transaction_ID
+        )}
+
+
+        ${popupRow(
+          "Transaction Date",
+          formatDate(
+            row.Transaction_Date
+          )
+        )}
+
+
+
+        <!-- ===============================
+             CONTRACTOR
+        ================================ -->
+
+        <div style="
+          font-weight: bold;
+          font-size: 15px;
+          margin-top: 15px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #ddd;
+        ">
+          Contractor
+        </div>
+
+
+        ${popupRow(
+          "Contractor ID",
+          row.Contractor_ID
+        )}
+
+
+        ${popupRow(
+          "Contractor Name",
+          row.Contractor_Name
+        )}
+
+
+
+        <!-- ===============================
+             LICENSE
+        ================================ -->
+
+        <div style="
+          font-weight: bold;
+          font-size: 15px;
+          margin-top: 15px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #ddd;
+        ">
+          License
+        </div>
+
+
+        ${popupRow(
+          "License ID",
+          row.License_ID
+        )}
+
+
+        ${popupRow(
+          "Category",
+          row.Category
+        )}
+
+
+        ${popupRow(
+          "License Type",
+          row.License_Type
+        )}
+
+
+        ${popupRow(
+          "License Status",
+          row.License_Status
+        )}
+
+
+        ${popupRow(
+          "Request Type",
+          row.Request_Type
+        )}
+
+
+
+        <!-- ===============================
+             CARD
+        ================================ -->
+
+        <div style="
+          font-weight: bold;
+          font-size: 15px;
+          margin-top: 15px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #ddd;
+        ">
+          Card
+        </div>
+
+
+        ${popupRow(
+          "Card Type",
+          row.Card_Type
+        )}
+
+
+        ${popupRow(
+          "Card ID",
+          row.Card_ID
+        )}
+
+
+
+        <!-- ===============================
+             VALUE
+        ================================ -->
+
+        <div style="
+          font-weight: bold;
+          font-size: 15px;
+          margin-top: 15px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #ddd;
+        ">
+          Financial
+        </div>
+
+
+        ${popupRow(
+          "Value",
+          formatMoney(
+            row.Value_SAR
+          ),
+          false
+        )}
+
+
+
+        <!-- ===============================
+             LOCATION
+        ================================ -->
+
+        <div style="
+          font-weight: bold;
+          font-size: 15px;
+          margin-top: 15px;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid #ddd;
+        ">
+          Location
+        </div>
+
+
+        ${popupRow(
+          "Latitude",
+          Number(
+            row.Latitude
+          ).toFixed(6)
+        )}
+
+
+        ${popupRow(
+          "Longitude",
+          Number(
+            row.Longitude
+          ).toFixed(6)
+        )}
+
+
+      </div>
+
+    `;
+
+  }
+
+
+  // ============================================================
+  // POPUP ROW
+  // ============================================================
+
+  function popupRow(
+    label,
+    value,
+    shouldEscape = true
+  ) {
+
+    const safeLabel =
+      escapeHtml(label);
+
+
+    const safeValue =
+      shouldEscape
+        ? escapeHtml(
+            value ?? ""
+          )
+        : value;
+
+
+    return `
+
+      <div style="
+        display: grid;
+        grid-template-columns: 125px 1fr;
+        gap: 8px;
+        margin-bottom: 4px;
+      ">
+
+        <div style="
+          font-weight: bold;
+          color: #444;
+        ">
+          ${safeLabel}:
+        </div>
+
+        <div>
+          ${safeValue}
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+
+  // ============================================================
+  // OPEN RECORD POPUP
+  // ============================================================
+
+  async function openRecordPopup(
+    graphic,
+    row
+  ) {
+
+    try {
+
+      /*
+       * FIRST:
+       * pan + zoom to the selected location
+       */
+
+      await view.goTo(
+        {
+
+          target:
+            graphic.geometry,
+
+          zoom:
+            17
+
+        },
+        {
+
+          duration:
+            800
+
+        }
+      );
+
+
+      /*
+       * SECOND:
+       * explicitly open popup AFTER navigation finishes
+       */
+
+      await view.openPopup({
+
+        location:
+          graphic.geometry,
+
+        title:
+          `License: ${row.License_ID}`,
+
+        content:
+          createPopupContent(row),
+
+        updateLocationEnabled:
+          false
+
+      });
+
+
+      console.log(
+        "Popup opened:",
+        row.License_ID
+      );
+
+    }
+
+    catch(error) {
+
+      console.error(
+        "Error opening popup:",
+        error
+      );
+
+    }
+
+  }
+
+
+  // ============================================================
+  // LOAD DATA
   // ============================================================
 
   async function loadData() {
 
     try {
 
+
       countDiv.textContent =
         "Loading data...";
+
 
       licenseList.innerHTML =
         "";
 
+
       graphicsLayer.removeAll();
 
 
-      // --------------------------------------------------------
-      // Fetch data.json
-      // --------------------------------------------------------
+      // ========================================================
+      // FETCH JSON
+      // ========================================================
 
       const response =
-        await fetch(DATA_URL);
+        await fetch(
+          DATA_URL
+        );
 
 
       if (!response.ok) {
 
         throw new Error(
-          `HTTP error ${response.status}`
+          `HTTP ${response.status}`
         );
 
       }
@@ -316,70 +774,99 @@
         await response.json();
 
 
-      // --------------------------------------------------------
-      // Read TransactionsTable
-      // --------------------------------------------------------
+      // ========================================================
+      // GET TRANSACTIONS
+      // ========================================================
 
       const rows =
-        Array.isArray(data.TransactionsTable)
+        Array.isArray(
+          data.TransactionsTable
+        )
           ? data.TransactionsTable
           : [];
 
 
       console.log(
-        "All rows:",
-        rows
+        "Loaded records:",
+        rows.length
       );
 
 
       // ========================================================
-      // FILTER
+      // URL FILTER
       // ========================================================
 
       const normalizedFilter =
-        String(requestTypeFilter || "")
+        String(
+          requestTypeFilter
+        )
           .trim()
           .toLowerCase();
 
 
       const validRows =
-        rows.filter(row => {
-
-          const latitude =
-            Number(row.Latitude);
-
-          const longitude =
-            Number(row.Longitude);
-
-          const rowRequestType =
-            String(row.Request_Type || "")
-              .trim()
-              .toLowerCase();
-
-          const hasValidCoordinates =
-            Number.isFinite(latitude) &&
-            Number.isFinite(longitude);
-
-          const hasLicense =
-            String(row.License_ID || "")
-              .trim() !== "";
-
-          const matchesRequestType =
-            !normalizedFilter ||
-            rowRequestType === normalizedFilter;
+        rows.filter(
+          row => {
 
 
-          return (
-            hasLicense &&
-            hasValidCoordinates &&
-            matchesRequestType
-          );
+            const latitude =
+              Number(
+                row.Latitude
+              );
 
-        });
+
+            const longitude =
+              Number(
+                row.Longitude
+              );
+
+
+            const hasCoordinates =
+              Number.isFinite(
+                latitude
+              ) &&
+              Number.isFinite(
+                longitude
+              );
+
+
+            const hasLicense =
+              String(
+                row.License_ID || ""
+              )
+                .trim() !== "";
+
+
+            const rowRequestType =
+              String(
+                row.Request_Type || ""
+              )
+                .trim()
+                .toLowerCase();
+
+
+            const matchesFilter =
+              !normalizedFilter ||
+              rowRequestType ===
+                normalizedFilter;
+
+
+            return (
+
+              hasCoordinates &&
+
+              hasLicense &&
+
+              matchesFilter
+
+            );
+
+          }
+        );
 
 
       // ========================================================
-      // DISPLAY COUNT
+      // COUNT
       // ========================================================
 
       countDiv.textContent =
@@ -387,26 +874,33 @@
 
 
       // ========================================================
-      // CREATE MAP POINTS
+      // LOOP THROUGH RECORDS
       // ========================================================
 
       validRows.forEach(
         (row, index) => {
 
+
           const latitude =
-            Number(row.Latitude);
+            Number(
+              row.Latitude
+            );
+
 
           const longitude =
-            Number(row.Longitude);
+            Number(
+              row.Longitude
+            );
 
 
-          // ----------------------------------------------------
-          // Geometry
-          // ----------------------------------------------------
+          // ====================================================
+          // MAP POINT
+          // ====================================================
 
           const point = {
 
-            type: "point",
+            type:
+              "point",
 
             longitude:
               longitude,
@@ -417,9 +911,9 @@
           };
 
 
-          // ----------------------------------------------------
-          // Marker symbol
-          // ----------------------------------------------------
+          // ====================================================
+          // MARKER
+          // ====================================================
 
           const symbol = {
 
@@ -430,7 +924,7 @@
               "circle",
 
             size:
-              11,
+              12,
 
             color:
               "#007ac2",
@@ -448,9 +942,9 @@
           };
 
 
-          // ----------------------------------------------------
-          // Graphic
-          // ----------------------------------------------------
+          // ====================================================
+          // GRAPHIC
+          // ====================================================
 
           const graphic =
             new Graphic({
@@ -461,10 +955,6 @@
               symbol:
                 symbol,
 
-
-              // =================================================
-              // ALL JSON FIELDS
-              // =================================================
 
               attributes: {
 
@@ -516,182 +1006,25 @@
               },
 
 
-              // =================================================
-              // POPUP WITH ALL INFORMATION
-              // =================================================
+              /*
+               * This template allows popup to work
+               * when clicking directly on the map marker too.
+               */
 
               popupTemplate: {
 
                 title:
-                  "License: {License_ID}",
+                  `License: ${escapeHtml(
+                    row.License_ID
+                  )}`,
 
-                content: `
-
-                  <div class="popup-content">
-
-                    <div class="popup-section">
-
-                      <div class="popup-section-title">
-                        Transaction
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Transaction ID:
-                        </span>
-                        {Transaction_ID}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Transaction Date:
-                        </span>
-                        {Transaction_Date}
-                      </div>
-
-                    </div>
-
-
-                    <div class="popup-section">
-
-                      <div class="popup-section-title">
-                        Contractor
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Contractor ID:
-                        </span>
-                        {Contractor_ID}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Contractor Name:
-                        </span>
-                        {Contractor_Name}
-                      </div>
-
-                    </div>
-
-
-                    <div class="popup-section">
-
-                      <div class="popup-section-title">
-                        License
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          License ID:
-                        </span>
-                        {License_ID}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Category:
-                        </span>
-                        {Category}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          License Type:
-                        </span>
-                        {License_Type}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          License Status:
-                        </span>
-                        {License_Status}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Request Type:
-                        </span>
-                        {Request_Type}
-                      </div>
-
-                    </div>
-
-
-                    <div class="popup-section">
-
-                      <div class="popup-section-title">
-                        Card
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Card Type:
-                        </span>
-                        {Card_Type}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Card ID:
-                        </span>
-                        {Card_ID}
-                      </div>
-
-                    </div>
-
-
-                    <div class="popup-section">
-
-                      <div class="popup-section-title">
-                        Financial
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Value:
-                        </span>
-                        {Value_SAR} SAR
-                      </div>
-
-                    </div>
-
-
-                    <div class="popup-section">
-
-                      <div class="popup-section-title">
-                        Location
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Latitude:
-                        </span>
-                        {Latitude}
-                      </div>
-
-                      <div class="popup-row">
-                        <span class="popup-label">
-                          Longitude:
-                        </span>
-                        {Longitude}
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                `
+                content:
+                  createPopupContent(row)
 
               }
 
             });
 
-
-          // ----------------------------------------------------
-          // Add graphic to map
-          // ----------------------------------------------------
 
           graphicsLayer.add(
             graphic
@@ -699,7 +1032,7 @@
 
 
           // ====================================================
-          // CREATE SIDEBAR ITEM
+          // SIDEBAR ITEM
           // ====================================================
 
           const li =
@@ -735,7 +1068,6 @@
             <div class="request-type">
 
               Request Type:
-
               ${escapeHtml(
                 row.Request_Type || ""
               )}
@@ -746,7 +1078,6 @@
             <div class="status">
 
               Status:
-
               ${escapeHtml(
                 row.License_Status || ""
               )}
@@ -772,26 +1103,49 @@
             "click",
             async function() {
 
-              await view.goTo({
 
-                target:
-                  graphic.geometry,
+              /*
+               * Remove selected class
+               * from previous item
+               */
 
-                zoom:
-                  17
+              document
+                .querySelectorAll(
+                  ".license-item.selected"
+                )
+                .forEach(
+                  item => {
 
-              });
+                    item.classList.remove(
+                      "selected"
+                    );
+
+                  }
+                );
 
 
-              view.openPopup({
+              /*
+               * Highlight selected item
+               */
 
-                features:
-                  [graphic],
+              li.classList.add(
+                "selected"
+              );
 
-                location:
-                  graphic.geometry
 
-              });
+              /*
+               * IMPORTANT:
+               *
+               * Pan + Zoom
+               * THEN
+               * Open popup
+               */
+
+              await openRecordPopup(
+                graphic,
+                row
+              );
+
 
             }
           );
@@ -801,12 +1155,13 @@
             li
           );
 
+
         }
       );
 
 
       // ========================================================
-      // ZOOM TO RESULTS
+      // INITIAL MAP EXTENT
       // ========================================================
 
       if (
@@ -814,21 +1169,33 @@
       ) {
 
         await view.goTo(
+
           graphicsLayer.graphics.toArray(),
+
           {
-            padding: 60
+
+            padding: {
+              top: 60,
+              right: 60,
+              bottom: 60,
+              left: 60
+            }
+
           }
+
         );
 
       }
+
       else {
 
         if (requestTypeFilter) {
 
           countDiv.textContent =
-            `No licenses found for Request_Type = "${requestTypeFilter}"`;
+            `No licenses found for "${requestTypeFilter}"`;
 
         }
+
         else {
 
           countDiv.textContent =
@@ -838,11 +1205,13 @@
 
       }
 
+
     }
+
     catch(error) {
 
       console.error(
-        "ERROR:",
+        "LOAD ERROR:",
         error
       );
 
@@ -852,7 +1221,7 @@
 
 
       alert(
-        "Error loading data. Check the browser console."
+        "Error loading data. Check browser console."
       );
 
     }
@@ -866,7 +1235,9 @@
 
   function escapeHtml(value) {
 
-    return String(value)
+    return String(
+      value ?? ""
+    )
 
       .replaceAll(
         "&",
@@ -900,9 +1271,13 @@
   // START
   // ============================================================
 
+  await view.when();
+
   loadData();
+
 
 </script>
 
 </body>
+
 </html>
