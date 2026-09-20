@@ -9,9 +9,6 @@
   <!-- ArcGIS Maps SDK for JavaScript -->
   <script type="module" src="https://js.arcgis.com/5.1/"></script>
 
-  <!-- SheetJS -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
   <style>
     html,
     body {
@@ -40,10 +37,6 @@
 
     #sidebarHeader h2 {
       margin: 0 0 12px 0;
-    }
-
-    #excelFile {
-      width: 100%;
     }
 
     #filterInfo {
@@ -90,6 +83,12 @@
       font-weight: bold;
     }
 
+    .status {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #555;
+    }
+
     .coordinates {
       margin-top: 4px;
       color: #777;
@@ -113,16 +112,10 @@
 
       <h2>Licenses</h2>
 
-      <input
-        type="file"
-        id="excelFile"
-        accept=".xlsx,.xls"
-      />
-
       <div id="filterInfo"></div>
 
       <div id="count">
-        Please select the Excel file.
+        Loading data...
       </div>
 
     </div>
@@ -139,13 +132,23 @@
 <script type="module">
 
   // ============================================================
+  // JSON DATA URL
+  // ============================================================
+
+  // Because data.json is in the same GitHub Pages folder
+  // as index.html, use a relative path.
+
+  const DATA_URL = "./data.json";
+
+
+  // ============================================================
   // REQUEST TYPE FILTER FROM URL
   //
   // Examples:
   //
   // ?requestType=Cancellation%20Request
   // ?requestType=Renewal%20Request
-  // ?requestType=New%20Request
+  // ?requestType=New%20License%20Request
   //
   // If requestType is not provided, all request types are shown.
   // ============================================================
@@ -183,51 +186,68 @@
   // GRAPHICS LAYER
   // ============================================================
 
-  const graphicsLayer = new GraphicsLayer();
+  const graphicsLayer =
+    new GraphicsLayer();
 
 
   // ============================================================
   // MAP
   // ============================================================
 
-  const map = new Map({
-    basemap: "streets-vector",
-    layers: [graphicsLayer]
-  });
+  const map =
+    new Map({
+
+      basemap:
+        "streets-vector",
+
+      layers:
+        [graphicsLayer]
+
+    });
 
 
   // ============================================================
   // MAP VIEW
   // ============================================================
 
-  const view = new MapView({
-    container: "viewDiv",
-    map: map,
+  const view =
+    new MapView({
 
-    center: [
-      46.6753,
-      24.7136
-    ],
+      container:
+        "viewDiv",
 
-    zoom: 10
-  });
+      map:
+        map,
+
+      center: [
+        46.6753,
+        24.7136
+      ],
+
+      zoom:
+        10
+
+    });
 
 
   // ============================================================
   // HTML ELEMENTS
   // ============================================================
 
-  const fileInput =
-    document.getElementById("excelFile");
-
   const licenseList =
-    document.getElementById("licenseList");
+    document.getElementById(
+      "licenseList"
+    );
 
   const countDiv =
-    document.getElementById("count");
+    document.getElementById(
+      "count"
+    );
 
   const filterInfo =
-    document.getElementById("filterInfo");
+    document.getElementById(
+      "filterInfo"
+    );
 
 
   // ============================================================
@@ -237,9 +257,11 @@
   if (requestTypeFilter) {
 
     filterInfo.textContent =
-      "Request Type Filter: " + requestTypeFilter;
+      "Request Type Filter: " +
+      requestTypeFilter;
 
-  } else {
+  }
+  else {
 
     filterInfo.textContent =
       "Request Type Filter: All";
@@ -248,152 +270,150 @@
 
 
   // ============================================================
-  // FILE SELECT EVENT
+  // LOAD JSON DATA
   // ============================================================
 
-  fileInput.addEventListener(
-    "change",
-    async function(event) {
+  async function loadData() {
 
-      const file = event.target.files[0];
+    try {
 
-      if (!file) {
-        return;
+      // --------------------------------------------------------
+      // Clear old results
+      // --------------------------------------------------------
+
+      countDiv.textContent =
+        "Loading data...";
+
+      licenseList.innerHTML =
+        "";
+
+      graphicsLayer.removeAll();
+
+
+      // --------------------------------------------------------
+      // Fetch JSON
+      // --------------------------------------------------------
+
+      const response =
+        await fetch(DATA_URL);
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          `HTTP error ${response.status}`
+        );
+
       }
 
 
-      try {
+      // --------------------------------------------------------
+      // Convert response to JSON
+      // --------------------------------------------------------
 
-        // ------------------------------------------------------
-        // Clear old results
-        // ------------------------------------------------------
-
-        countDiv.textContent =
-          "Reading Excel...";
-
-        licenseList.innerHTML = "";
-
-        graphicsLayer.removeAll();
+      const data =
+        await response.json();
 
 
-        // ------------------------------------------------------
-        // Read Excel file
-        // ------------------------------------------------------
-
-        const arrayBuffer =
-          await file.arrayBuffer();
+      console.log(
+        "Full JSON:",
+        data
+      );
 
 
-        const workbook =
-          XLSX.read(
-            arrayBuffer,
-            {
-              type: "array"
-            }
-          );
+      // --------------------------------------------------------
+      // Get TransactionsTable
+      // --------------------------------------------------------
+
+      const rows =
+        Array.isArray(
+          data.TransactionsTable
+        )
+          ? data.TransactionsTable
+          : [];
 
 
-        console.log(
-          "Workbook sheets:",
-          workbook.SheetNames
-        );
+      console.log(
+        "All JSON rows:",
+        rows
+      );
 
 
-        // ------------------------------------------------------
-        // Select worksheet
-        // ------------------------------------------------------
+      // ========================================================
+      // FILTER ROWS
+      // ========================================================
 
-        const worksheet =
-          workbook.Sheets["TransactionsTable"]
-          ||
-          workbook.Sheets[
-            workbook.SheetNames[0]
-          ];
-
-
-        // ------------------------------------------------------
-        // Convert Excel to JavaScript objects
-        //
-        // Your headers start on Excel Row 3
-        //
-        // range: 2 means start from row 3
-        // ------------------------------------------------------
-
-        const rows =
-          XLSX.utils.sheet_to_json(
-            worksheet,
-            {
-              range: 2,
-              defval: ""
-            }
-          );
+      const normalizedFilter =
+        String(
+          requestTypeFilter || ""
+        )
+          .trim()
+          .toLowerCase();
 
 
-        console.log(
-          "All Excel rows:",
-          rows
-        );
-
-
-        // ======================================================
-        // FILTER ROWS
-        // ======================================================
-
-        const normalizedFilter =
-          String(requestTypeFilter || "")
-            .trim()
-            .toLowerCase();
-
-
-        const validRows =
-          rows.filter(row => {
-
+      const validRows =
+        rows.filter(
+          row => {
 
             // -----------------------------------------------
             // Latitude / Longitude
             // -----------------------------------------------
 
             const latitude =
-              Number(row.Latitude);
+              Number(
+                row.Latitude
+              );
 
             const longitude =
-              Number(row.Longitude);
+              Number(
+                row.Longitude
+              );
 
 
             // -----------------------------------------------
-            // Request_Type
+            // Request Type
             // -----------------------------------------------
 
             const rowRequestType =
-              String(row.Request_Type || "")
+              String(
+                row.Request_Type || ""
+              )
                 .trim()
                 .toLowerCase();
 
 
             // -----------------------------------------------
-            // Validate row
+            // Validate coordinates
             // -----------------------------------------------
 
             const hasValidCoordinates =
-              Number.isFinite(latitude) &&
-              Number.isFinite(longitude);
+              Number.isFinite(
+                latitude
+              ) &&
+              Number.isFinite(
+                longitude
+              );
 
+
+            // -----------------------------------------------
+            // Validate License ID
+            // -----------------------------------------------
 
             const hasLicense =
-              String(row.License_ID || "")
+              String(
+                row.License_ID || ""
+              )
                 .trim() !== "";
 
 
             // -----------------------------------------------
-            // Request type condition
-            //
-            // If filter is empty -> show everything
-            // Otherwise match Request_Type
+            // Request Type Filter
             // -----------------------------------------------
 
             const matchesRequestType =
               !normalizedFilter ||
-              rowRequestType === normalizedFilter;
+              rowRequestType ===
+                normalizedFilter;
 
 
             return (
@@ -402,339 +422,403 @@
               matchesRequestType
             );
 
-          });
-
-
-        console.log(
-          "Filtered rows:",
-          validRows
+          }
         );
 
 
-        // ======================================================
-        // DISPLAY COUNT
-        // ======================================================
-
-        countDiv.textContent =
-          `${validRows.length} licenses found`;
+      console.log(
+        "Filtered rows:",
+        validRows
+      );
 
 
-        // ======================================================
-        // CREATE GRAPHICS AND LIST
-        // ======================================================
+      // ========================================================
+      // DISPLAY COUNT
+      // ========================================================
 
-        validRows.forEach(
-          (row, index) => {
-
-
-            const latitude =
-              Number(row.Latitude);
+      countDiv.textContent =
+        `${validRows.length} licenses found`;
 
 
-            const longitude =
-              Number(row.Longitude);
+      // ========================================================
+      // CREATE GRAPHICS AND LIST
+      // ========================================================
+
+      validRows.forEach(
+        (row, index) => {
+
+          const latitude =
+            Number(
+              row.Latitude
+            );
+
+          const longitude =
+            Number(
+              row.Longitude
+            );
 
 
-            // --------------------------------------------------
-            // ArcGIS point geometry
-            // --------------------------------------------------
+          // ----------------------------------------------------
+          // ArcGIS Point Geometry
+          // ----------------------------------------------------
 
-            const point = {
+          const point = {
 
-              type: "point",
+            type:
+              "point",
 
-              longitude:
-                longitude,
+            longitude:
+              longitude,
 
-              latitude:
-                latitude
+            latitude:
+              latitude
 
-            };
+          };
 
 
-            // --------------------------------------------------
-            // Point symbol
-            // --------------------------------------------------
+          // ----------------------------------------------------
+          // Point Symbol
+          // ----------------------------------------------------
 
-            const symbol = {
+          const symbol = {
 
-              type:
-                "simple-marker",
+            type:
+              "simple-marker",
 
-              style:
-                "circle",
+            style:
+              "circle",
 
-              size:
-                11,
+            size:
+              11,
+
+            color:
+              "#007ac2",
+
+            outline: {
 
               color:
-                "#007ac2",
+                "#ffffff",
 
-              outline: {
+              width:
+                1.5
 
-                color:
-                  "#ffffff",
+            }
 
-                width:
-                  1.5
+          };
+
+
+          // ----------------------------------------------------
+          // Graphic
+          // ----------------------------------------------------
+
+          const graphic =
+            new Graphic({
+
+              geometry:
+                point,
+
+              symbol:
+                symbol,
+
+              attributes: {
+
+                ObjectID:
+                  index + 1,
+
+                Transaction_ID:
+                  row.Transaction_ID || "",
+
+                Transaction_Date:
+                  row.Transaction_Date || "",
+
+                Contractor_ID:
+                  row.Contractor_ID || "",
+
+                Contractor_Name:
+                  row.Contractor_Name || "",
+
+                License_ID:
+                  row.License_ID || "",
+
+                Category:
+                  row.Category || "",
+
+                License_Type:
+                  row.License_Type || "",
+
+                License_Status:
+                  row.License_Status || "",
+
+                Request_Type:
+                  row.Request_Type || "",
+
+                Card_Type:
+                  row.Card_Type || "",
+
+                Card_ID:
+                  row.Card_ID || "",
+
+                Value_SAR:
+                  row.Value_SAR || "",
+
+                Latitude:
+                  latitude,
+
+                Longitude:
+                  longitude
+
+              },
+
+
+              // ------------------------------------------------
+              // Popup
+              // ------------------------------------------------
+
+              popupTemplate: {
+
+                title:
+                  "{License_ID}",
+
+                content: `
+
+                  <b>Contractor:</b>
+                  {Contractor_Name}
+                  <br>
+
+                  <b>Contractor ID:</b>
+                  {Contractor_ID}
+                  <br>
+
+                  <b>Transaction ID:</b>
+                  {Transaction_ID}
+                  <br>
+
+                  <b>Transaction Date:</b>
+                  {Transaction_Date}
+                  <br><br>
+
+                  <b>License:</b>
+                  {License_ID}
+                  <br>
+
+                  <b>Status:</b>
+                  {License_Status}
+                  <br>
+
+                  <b>License Type:</b>
+                  {License_Type}
+                  <br>
+
+                  <b>Category:</b>
+                  {Category}
+                  <br>
+
+                  <b>Request Type:</b>
+                  {Request_Type}
+                  <br><br>
+
+                  <b>Card Type:</b>
+                  {Card_Type}
+                  <br>
+
+                  <b>Card ID:</b>
+                  {Card_ID}
+                  <br>
+
+                  <b>Value SAR:</b>
+                  {Value_SAR}
+                  <br><br>
+
+                  <b>Latitude:</b>
+                  {Latitude}
+                  <br>
+
+                  <b>Longitude:</b>
+                  {Longitude}
+
+                `
 
               }
 
-            };
+            });
 
 
-            // --------------------------------------------------
-            // Graphic
-            // --------------------------------------------------
+          // ----------------------------------------------------
+          // Add Point to Map
+          // ----------------------------------------------------
 
-            const graphic =
-              new Graphic({
-
-                geometry:
-                  point,
-
-                symbol:
-                  symbol,
-
-                attributes: {
-
-                  ObjectID:
-                    index + 1,
-
-                  Transaction_ID:
-                    row.Transaction_ID || "",
-
-                  Contractor_ID:
-                    row.Contractor_ID || "",
-
-                  Contractor_Name:
-                    row.Contractor_Name || "",
-
-                  License_ID:
-                    row.License_ID || "",
-
-                  Category:
-                    row.Category || "",
-
-                  License_Type:
-                    row.License_Type || "",
-
-                  License_Status:
-                    row.License_Status || "",
-
-                  Request_Type:
-                    row.Request_Type || "",
-
-                  Latitude:
-                    latitude,
-
-                  Longitude:
-                    longitude
-
-                },
+          graphicsLayer.add(
+            graphic
+          );
 
 
-                popupTemplate: {
+          // ====================================================
+          // CREATE LIST ITEM
+          // ====================================================
 
-                  title:
-                    "{License_ID}",
+          const li =
+            document.createElement(
+              "li"
+            );
 
-                  content: `
 
-                    <b>Contractor:</b>
-                    {Contractor_Name}
-                    <br>
+          li.className =
+            "license-item";
 
-                    <b>Contractor ID:</b>
-                    {Contractor_ID}
-                    <br>
 
-                    <b>License:</b>
-                    {License_ID}
-                    <br>
+          li.innerHTML = `
 
-                    <b>Status:</b>
-                    {License_Status}
-                    <br>
+            <div class="license-id">
 
-                    <b>License Type:</b>
-                    {License_Type}
-                    <br>
+              ${escapeHtml(
+                row.License_ID
+              )}
 
-                    <b>Category:</b>
-                    {Category}
-                    <br>
+            </div>
 
-                    <b>Request Type:</b>
-                    {Request_Type}
-                    <br><br>
 
-                    <b>Latitude:</b>
-                    {Latitude}
-                    <br>
+            <div class="contractor">
 
-                    <b>Longitude:</b>
-                    {Longitude}
+              ${escapeHtml(
+                row.Contractor_Name || ""
+              )}
 
-                  `
+            </div>
 
-                }
+
+            <div class="request-type">
+
+              Request Type:
+
+              ${escapeHtml(
+                row.Request_Type || ""
+              )}
+
+            </div>
+
+
+            <div class="status">
+
+              Status:
+
+              ${escapeHtml(
+                row.License_Status || ""
+              )}
+
+            </div>
+
+
+            <div class="coordinates">
+
+              ${latitude.toFixed(6)},
+              ${longitude.toFixed(6)}
+
+            </div>
+
+          `;
+
+
+          // ====================================================
+          // CLICK LIST ITEM
+          // ====================================================
+
+          li.addEventListener(
+            "click",
+            async function() {
+
+              await view.goTo({
+
+                target:
+                  graphic.geometry,
+
+                zoom:
+                  17
 
               });
 
 
-            // --------------------------------------------------
-            // Add point to map
-            // --------------------------------------------------
+              view.openPopup({
 
-            graphicsLayer.add(
-              graphic
-            );
+                features:
+                  [graphic],
 
+                location:
+                  graphic.geometry
 
-            // ==================================================
-            // CREATE LIST ITEM
-            // ==================================================
+              });
 
-            const li =
-              document.createElement(
-                "li"
-              );
-
-
-            li.className =
-              "license-item";
-
-
-            li.innerHTML = `
-
-              <div class="license-id">
-                ${escapeHtml(
-                  row.License_ID
-                )}
-              </div>
-
-              <div class="contractor">
-                ${escapeHtml(
-                  row.Contractor_Name || ""
-                )}
-              </div>
-
-              <div class="request-type">
-                Request Type:
-                ${escapeHtml(
-                  row.Request_Type || ""
-                )}
-              </div>
-
-              <div class="coordinates">
-
-                ${latitude.toFixed(6)},
-                ${longitude.toFixed(6)}
-
-              </div>
-
-            `;
-
-
-            // ==================================================
-            // CLICK LIST ITEM
-            // ==================================================
-
-            li.addEventListener(
-              "click",
-              async function() {
-
-
-                await view.goTo({
-
-                  target:
-                    graphic.geometry,
-
-                  zoom:
-                    17
-
-                });
-
-
-                view.openPopup({
-
-                  features:
-                    [graphic],
-
-                  location:
-                    graphic.geometry
-
-                });
-
-
-              }
-            );
-
-
-            licenseList.appendChild(
-              li
-            );
-
-
-          }
-        );
-
-
-        // ======================================================
-        // ZOOM TO FILTERED POINTS
-        // ======================================================
-
-        if (
-          graphicsLayer.graphics.length > 0
-        ) {
-
-          await view.goTo(
-            graphicsLayer.graphics.toArray(),
-            {
-              padding:
-                60
             }
           );
 
-        } else {
 
-          if (requestTypeFilter) {
-
-            countDiv.textContent =
-              `No licenses found for Request_Type = "${requestTypeFilter}"`;
-
-          } else {
-
-            countDiv.textContent =
-              "No licenses found";
-
-          }
+          licenseList.appendChild(
+            li
+          );
 
         }
+      );
 
+
+      // ========================================================
+      // ZOOM TO FILTERED POINTS
+      // ========================================================
+
+      if (
+        graphicsLayer.graphics.length > 0
+      ) {
+
+        await view.goTo(
+          graphicsLayer.graphics.toArray(),
+          {
+            padding:
+              60
+          }
+        );
 
       }
-      catch(error) {
+      else {
 
-        console.error(
-          "ERROR:",
-          error
-        );
+        if (requestTypeFilter) {
 
+          countDiv.textContent =
+            `No licenses found for Request_Type = "${requestTypeFilter}"`;
 
-        countDiv.textContent =
-          "Error reading Excel";
+        }
+        else {
 
+          countDiv.textContent =
+            "No licenses found";
 
-        alert(
-          "Error reading Excel. Check the browser console."
-        );
+        }
 
       }
 
     }
-  );
+
+
+    // ==========================================================
+    // ERROR HANDLING
+    // ==========================================================
+
+    catch(error) {
+
+      console.error(
+        "ERROR:",
+        error
+      );
+
+
+      countDiv.textContent =
+        "Error loading data";
+
+
+      alert(
+        "Error loading data. Check the browser console."
+      );
+
+    }
+
+  }
 
 
   // ============================================================
@@ -743,7 +827,9 @@
 
   function escapeHtml(value) {
 
-    return String(value)
+    return String(
+      value
+    )
 
       .replaceAll(
         "&",
@@ -771,6 +857,13 @@
       );
 
   }
+
+
+  // ============================================================
+  // START
+  // ============================================================
+
+  loadData();
 
 </script>
 
