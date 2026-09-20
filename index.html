@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
- 
+
 <head>
- 
+
   <meta charset="UTF-8" />
 
   <meta
@@ -42,191 +42,101 @@
     ========================================================= */
 
     #sidebar {
-
       width: 340px;
-
       background: white;
-
       border-right: 1px solid #ccc;
-
       overflow-y: auto;
-
       z-index: 10;
-
     }
 
 
     #sidebarHeader {
-
       padding: 15px;
-
-      border-bottom:
-        1px solid #ddd;
-
+      border-bottom: 1px solid #ddd;
       position: sticky;
-
       top: 0;
-
       background: white;
-
       z-index: 20;
-
     }
 
 
     #sidebarHeader h2 {
-
-      margin:
-        0 0 12px 0;
-
+      margin: 0 0 12px 0;
     }
 
 
     #filterInfo {
-
-      margin-top:
-        8px;
-
-      font-size:
-        14px;
-
-      color:
-        #333;
-
+      margin-top: 8px;
+      font-size: 14px;
+      color: #333;
     }
 
 
     #count {
-
-      margin-top:
-        6px;
-
-      color:
-        #666;
-
-      font-size:
-        14px;
-
+      margin-top: 6px;
+      color: #666;
+      font-size: 14px;
     }
 
 
     #licenseList {
-
-      list-style:
-        none;
-
-      padding:
-        0;
-
-      margin:
-        0;
-
+      list-style: none;
+      padding: 0;
+      margin: 0;
     }
 
 
     .license-item {
-
-      padding:
-        12px 15px;
-
-      border-bottom:
-        1px solid #eee;
-
-      cursor:
-        pointer;
-
-      transition:
-        background 0.15s;
-
+      padding: 12px 15px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.15s;
     }
 
 
     .license-item:hover {
-
-      background:
-        #f3f3f3;
-
+      background: #f3f3f3;
     }
 
 
     .license-item.selected {
-
-      background:
-        #e6f3ff;
-
-      border-left:
-        4px solid #007ac2;
-
-      padding-left:
-        11px;
-
+      background: #e6f3ff;
+      border-left: 4px solid #007ac2;
+      padding-left: 11px;
     }
 
 
     .license-id {
-
-      font-weight:
-        bold;
-
-      font-size:
-        15px;
-
-      color:
-        #222;
-
+      font-weight: bold;
+      font-size: 15px;
+      color: #222;
     }
 
 
     .contractor {
-
-      margin-top:
-        4px;
-
-      font-size:
-        13px;
-
+      margin-top: 4px;
+      font-size: 13px;
     }
 
 
     .request-type {
-
-      margin-top:
-        4px;
-
-      font-size:
-        12px;
-
-      font-weight:
-        bold;
-
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: bold;
     }
 
 
     .status {
-
-      margin-top:
-        4px;
-
-      font-size:
-        12px;
-
-      color:
-        #555;
-
+      margin-top: 4px;
+      font-size: 12px;
+      color: #555;
     }
 
 
     .coordinates {
-
-      margin-top:
-        4px;
-
-      color:
-        #777;
-
-      font-size:
-        11px;
-
+      margin-top: 4px;
+      color: #777;
+      font-size: 11px;
     }
 
 
@@ -235,26 +145,16 @@
     ========================================================= */
 
     #viewDiv {
-
-      flex:
-        1;
-
-      height:
-        100%;
-
+      flex: 1;
+      height: 100%;
     }
 
 
     /* Basemap Gallery width */
 
     .esri-basemap-gallery {
-
-      width:
-        300px;
-
-      max-height:
-        450px;
-
+      width: 300px;
+      max-height: 450px;
     }
 
   </style>
@@ -282,23 +182,18 @@
       </h2>
 
 
-      <div
-        id="filterInfo">
+      <div id="filterInfo">
       </div>
 
 
-      <div
-        id="count">
-
+      <div id="count">
         Loading data...
-
       </div>
 
     </div>
 
 
-    <ul
-      id="licenseList">
+    <ul id="licenseList">
     </ul>
 
 
@@ -309,8 +204,7 @@
        MAP
   ======================================================== -->
 
-  <div
-    id="viewDiv">
+  <div id="viewDiv">
   </div>
 
 
@@ -334,6 +228,8 @@
   //
   // Examples:
   //
+  // ?requestType=all
+  //
   // ?requestType=Renewal%20Request
   //
   // ?requestType=Cancellation%20Request
@@ -352,6 +248,22 @@
     urlParams.get(
       "requestType"
     ) || "";
+
+
+  // Normalize once.
+  // Empty value or "all" means display everything.
+
+  const normalizedRequestTypeFilter =
+    String(
+      requestTypeFilter
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const showAllRequestTypes =
+    !normalizedRequestTypeFilter ||
+    normalizedRequestTypeFilter === "all";
 
 
   // ============================================================
@@ -514,21 +426,19 @@
   // ============================================================
 
   if (
-    requestTypeFilter
+    showAllRequestTypes
   ) {
 
     filterInfo.textContent =
-
-      "Request Type: " +
-      requestTypeFilter;
+      "Request Type: All";
 
   }
 
   else {
 
     filterInfo.textContent =
-
-      "Request Type: All";
+      "Request Type: " +
+      requestTypeFilter;
 
   }
 
@@ -942,7 +852,6 @@
           graphic.geometry,
 
         title:
-
           "License: " +
           row.License_ID,
 
@@ -1005,9 +914,7 @@
       ) {
 
         throw new Error(
-
           `HTTP ${response.status}`
-
         );
 
       }
@@ -1033,28 +940,18 @@
 
 
       console.log(
-
         "Loaded records:",
-
         rows.length
-
       );
 
 
       // ========================================================
       // REQUEST TYPE FILTER
+      //
+      // requestType=all -> all records
+      // no requestType  -> all records
+      // specific value  -> matching Request_Type only
       // ========================================================
-
-      const normalizedFilter =
-
-        String(
-          requestTypeFilter
-        )
-
-          .trim()
-
-          .toLowerCase();
-
 
       const validRows =
 
@@ -1112,12 +1009,12 @@
 
             const matchesFilter =
 
-              !normalizedFilter
+              showAllRequestTypes
 
               ||
 
               rowRequestType ===
-                normalizedFilter;
+                normalizedRequestTypeFilter;
 
 
             return (
@@ -1144,7 +1041,6 @@
       // ========================================================
 
       countDiv.textContent =
-
         `${validRows.length} licenses found`;
 
 
@@ -1307,7 +1203,6 @@
 
 
                 title:
-
                   "License: " +
                   escapeHtml(
                     row.License_ID
@@ -1315,7 +1210,6 @@
 
 
                 content:
-
                   createPopupContent(
                     row
                   )
@@ -1507,11 +1401,10 @@
 
 
         if (
-          requestTypeFilter
+          !showAllRequestTypes
         ) {
 
           countDiv.textContent =
-
             `No licenses found for "${requestTypeFilter}"`;
 
         }
@@ -1520,7 +1413,6 @@
         else {
 
           countDiv.textContent =
-
             "No licenses found";
 
         }
@@ -1534,23 +1426,17 @@
 
 
       console.error(
-
         "LOAD ERROR:",
-
         error
-
       );
 
 
       countDiv.textContent =
-
         "Error loading data";
 
 
       alert(
-
         "Error loading data. Check browser console."
-
       );
 
     }
