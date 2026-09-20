@@ -139,20 +139,27 @@
 <script type="module">
 
   // ============================================================
-  // REQUEST TYPE FILTER
-  // ============================================================
+  // REQUEST TYPE FILTER FROM URL
   //
-  // Change this value:
+  // Examples:
   //
-  // "New"
-  // "Renewal"
-  // "Cancellation"
-  // etc.
+  // ?requestType=Cancellation%20Request
+  // ?requestType=Renewal%20Request
+  // ?requestType=New%20Request
   //
-  // Use "" to show all Request_Type values.
+  // If requestType is not provided, all request types are shown.
   // ============================================================
 
-  const requestTypeFilter = "Cancellation Request";
+  const urlParams =
+    new URLSearchParams(window.location.search);
+
+  const requestTypeFilter =
+    urlParams.get("requestType") || "";
+
+  console.log(
+    "Request Type from URL:",
+    requestTypeFilter
+  );
 
 
   // ============================================================
@@ -692,8 +699,17 @@
 
         } else {
 
-          countDiv.textContent =
-            `No licenses found for Request_Type = "${requestTypeFilter}"`;
+          if (requestTypeFilter) {
+
+            countDiv.textContent =
+              `No licenses found for Request_Type = "${requestTypeFilter}"`;
+
+          } else {
+
+            countDiv.textContent =
+              "No licenses found";
+
+          }
 
         }
 
